@@ -1,26 +1,26 @@
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import { PDFDocument, rgb } from 'pdf-lib';
 import { ResearchData } from "./gemini";
-
-// Funkce pro odstranění diakritiky (pro StandardFonts v pdf-lib, které ji neumí)
-function removeDiacritics(text: string): string {
-  if (!text) return "";
-  return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-}
+import fontkit from '@pdf-lib/fontkit';
+import { ROBOTO_REGULAR_B64, ROBOTO_BOLD_B64 } from './fonts-base64';
 
 export async function generatePdf(data: ResearchData, hostName: string): Promise<Buffer> {
   const pdfDoc = await PDFDocument.create();
-  
-  // Používáme standardní fonty, které fungují všude bez externích souborů
-  const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  pdfDoc.registerFontkit(fontkit);
+
+  // Načtení fontů z Base64 (nejrobustnější řešení pro Vercel/Serverless)
+  const fontRegularBytes = Buffer.from(ROBOTO_REGULAR_B64, 'base64');
+  const fontBoldBytes = Buffer.from(ROBOTO_BOLD_B64, 'base64');
+
+  const fontRegular = await pdfDoc.embedFont(fontRegularBytes);
+  const fontBold = await pdfDoc.embedFont(fontBoldBytes);
 
   let page = pdfDoc.addPage([595.28, 841.89]); // A4
   const { width, height } = page.getSize();
   
   let y = height - 50;
 
-  // Header - odstraňujeme diakritiku pro standardní fonty
-  page.drawText(removeDiacritics(`Podcast Briefing: ${hostName}`), {
+  // Header
+  page.drawText(`Podcast Briefing: ${hostName}`, {
     x: 50,
     y: y,
     size: 24,
@@ -29,7 +29,7 @@ export async function generatePdf(data: ResearchData, hostName: string): Promise
   });
   y -= 30;
 
-  page.drawText(removeDiacritics(`Vygenerováno pro: Vojta Žižka`), {
+  page.drawText(`Vygenerováno pro: Vojta Žižka`, {
     x: 50,
     y: y,
     size: 10,
@@ -55,7 +55,7 @@ export async function generatePdf(data: ResearchData, hostName: string): Promise
       y = height - 50;
     }
 
-    page.drawText(removeDiacritics(section.title), {
+    page.drawText(section.title, {
       x: 50,
       y: y,
       size: 18,
@@ -66,10 +66,10 @@ export async function generatePdf(data: ResearchData, hostName: string): Promise
 
     for (const item of section.content) {
       const text = section.content.length > 1 ? `• ${item}` : item;
-      const cleanText = removeDiacritics(text);
       const maxWidth = width - 100;
       
-      const words = cleanText.split(' ');
+      // Jednoduché zalamování řádků
+      const words = text.split(' ');
       let line = '';
 
       for (const word of words) {

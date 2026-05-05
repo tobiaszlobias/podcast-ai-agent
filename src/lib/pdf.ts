@@ -9,11 +9,18 @@ export async function generatePdf(data: ResearchData, hostName: string): Promise
   pdfDoc.registerFontkit(fontkit);
 
   // Načtení fontů s podporou češtiny z projektu
-  const fontRegularPath = path.join(process.cwd(), 'src/assets/fonts/Roboto-Regular.ttf');
-  const fontBoldPath = path.join(process.cwd(), 'src/assets/fonts/Roboto-Bold.ttf');
+  const fontRegularPath = path.join(process.cwd(), 'public/fonts/Roboto-Regular.ttf');
+  const fontBoldPath = path.join(process.cwd(), 'public/fonts/Roboto-Bold.ttf');
   
-  const fontRegularBytes = fs.readFileSync(fontRegularPath);
-  const fontBoldBytes = fs.readFileSync(fontBoldPath);
+  console.log(`[PDF] Loading fonts from: ${fontRegularPath}`);
+  
+  if (!fs.existsSync(fontRegularPath)) {
+    console.error(`[PDF] Font not found at ${fontRegularPath}`);
+    throw new Error(`Font file not found: ${fontRegularPath}`);
+  }
+
+  const fontRegularBytes = new Uint8Array(fs.readFileSync(fontRegularPath));
+  const fontBoldBytes = new Uint8Array(fs.readFileSync(fontBoldPath));
 
   const fontRegular = await pdfDoc.embedFont(fontRegularBytes);
   const fontBold = await pdfDoc.embedFont(fontBoldBytes);

@@ -27,19 +27,24 @@ export async function POST(request: NextRequest) {
     // 2. Zpracování rešerše - u Vercelu musíme počkat na dokončení, 
     // jinak se funkce ukončí dříve, než se PDF nahraje a odešle.
     try {
-      console.log(`Starting research for: ${hostName}`);
+      console.log(`[PROCESS] Starting research for: ${hostName}`);
       
       const researchRequest = await prisma.researchRequest.create({
         data: { hostName, status: "PROCESSING" },
       });
 
+      console.log(`[PROCESS] Generating AI research...`);
       const data = await generateResearch(hostName);
+      
+      console.log(`[PROCESS] Generating PDF briefing...`);
       const pdfBuffer = await generatePdf(data, hostName);
 
       // Nahrání do Supabase Storage
       const fileName = `${researchRequest.id}-${hostName.replace(/\s+/g, '-').toLowerCase()}.pdf`;
+      console.log(`[PROCESS] Uploading PDF to Supabase: ${fileName}`);
       const publicUrl = await uploadPdf(pdfBuffer, fileName);
 
+      console.log(`[PROCESS] Updating database record...`);
       await prisma.researchRequest.update({
         where: { id: researchRequest.id },
         data: {
@@ -54,9 +59,9 @@ export async function POST(request: NextRequest) {
         publicUrl
       );
       
-      console.log(`Research completed for: ${hostName}`);
-    } catch {
-      console.error("Chyba při zpracování:");
+      console.log(`[SUCCESS] Research completed for: ${hostName}`);
+    } catch (error) {
+      console.error("[ERROR] Detailed processing error:", error);
       await sendWhatsAppMessage(
         from,
         `Hele, něco se pokazilo při zkoumání ${hostName}. 😕 Zkus to prosím za chvilku znova.`

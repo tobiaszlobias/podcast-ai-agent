@@ -16,20 +16,24 @@ export async function generateResearch(hostName: string): Promise<ResearchData> 
     model: "gemini-flash-latest",
   });
 
-  const prompt = `Jsi profesionální rešeršista pro podcasty. Tvým úkolem je připravit podklady pro rozhovor s hostem: ${hostName}.
+  const prompt = `Jsi špičkový profesionální rešeršista pro podcasty. Tvým úkolem je připravit detailní a gramaticky naprosto správné podklady pro rozhovor s hostem: ${hostName}.
   
-  Použij vyhledávání na internetu a najdi nejaktuálnější informace o tomto člověku (jeho poslední projekty, vyjádření, rozhovory).
+  Použij vyhledávání na internetu a najdi nejaktuálnější informace o tomto člověku (jeho poslední projekty, vyjádření, rozhovory, sociální sítě).
   
   Vrať výsledek v JSON formátu s následující strukturou:
   {
-    "bio": "Stručný životopis (max 3-4 věty)",
+    "bio": "Stručný, ale výstižný životopis (3-4 věty)",
     "currentTopics": ["téma 1", "téma 2", ...],
     "interestingFacts": ["zajímavost 1", "zajímavost 2", ...],
-    "suggestedQuestions": ["otázka 1", "otázka 2", ...],
-    "potentialControversies": ["pokud existují, jinak prázdné pole"]
+    "suggestedQuestions": ["originální a hluboká otázka 1", "otázka 2", ...],
+    "potentialControversies": ["pokud existují (citlivá témata, kritika), jinak prázdné pole"]
   }
   
-  DŮLEŽITÉ: Odpovídej VŽDY v češtině. Vrať POUZE čistý JSON objekt bez jakéhokoliv dalšího textu nebo markdownu.`;
+  DŮLEŽITÉ: 
+  - Odpovídej VŽDY v češtině.
+  - Používej SPRÁVNOU českou gramatiku a diakritiku (háčky, čárky).
+  - Tón by měl být profesionální a inspirativní.
+  - Vrať POUZE čistý JSON objekt bez jakéhokoliv dalšího textu nebo markdownu.`;
 
   const result = await model.generateContent(prompt);
   const response = await result.response;
@@ -39,7 +43,7 @@ export async function generateResearch(hostName: string): Promise<ResearchData> 
     // Odstranění případných ```json ... ``` obalů
     const cleanJson = text.replace(/```json/g, "").replace(/```/g, "").trim();
     return JSON.parse(cleanJson) as ResearchData;
-  } catch (error) {
+  } catch {
     console.error("Chyba při parsování JSONu od Gemini:", text);
     throw new Error("Nepodařilo se získat strukturovaná data od AI.");
   }

@@ -1,23 +1,30 @@
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import { PDFDocument, rgb } from 'pdf-lib';
 import { ResearchData } from "./gemini";
-
-// Funkce pro odstranění diakritiky (pro StandardFonts v pdf-lib)
-function removeDiacritics(text: string): string {
-  return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-}
+import fs from 'fs';
+import path from 'path';
+import fontkit from '@pdf-lib/fontkit';
 
 export async function generatePdf(data: ResearchData, hostName: string): Promise<Buffer> {
   const pdfDoc = await PDFDocument.create();
+  pdfDoc.registerFontkit(fontkit);
+
+  // Načtení fontů s podporou češtiny z projektu
+  const fontRegularPath = path.join(process.cwd(), 'src/assets/fonts/Roboto-Regular.ttf');
+  const fontBoldPath = path.join(process.cwd(), 'src/assets/fonts/Roboto-Bold.ttf');
+  
+  const fontRegularBytes = fs.readFileSync(fontRegularPath);
+  const fontBoldBytes = fs.readFileSync(fontBoldPath);
+
+  const fontRegular = await pdfDoc.embedFont(fontRegularBytes);
+  const fontBold = await pdfDoc.embedFont(fontBoldBytes);
+
   let page = pdfDoc.addPage([595.28, 841.89]); // A4
   const { width, height } = page.getSize();
-  
-  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-  const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
   
   let y = height - 50;
 
   // Header
-  page.drawText(removeDiacritics(`Podcast Briefing: ${hostName}`), {
+  page.drawText(`Podcast Briefing: ${hostName}`, {
     x: 50,
     y: y,
     size: 24,
@@ -26,7 +33,7 @@ export async function generatePdf(data: ResearchData, hostName: string): Promise
   });
   y -= 30;
 
-  page.drawText(removeDiacritics(`Vygenerovano pro: Vojta Zizka`), {
+  page.drawText(`Vygenerováno pro: Vojta Žižka`, {
     x: 50,
     y: y,
     size: 10,
@@ -37,13 +44,13 @@ export async function generatePdf(data: ResearchData, hostName: string): Promise
 
   const sections = [
     { title: 'Bio', content: [data.bio] },
-    { title: 'Aktualni temata', content: data.currentTopics },
-    { title: 'Zajimavosti', content: data.interestingFacts },
-    { title: 'Navrzene otazky', content: data.suggestedQuestions },
+    { title: 'Aktuální témata', content: data.currentTopics },
+    { title: 'Zajímavosti', content: data.interestingFacts },
+    { title: 'Navržené otázky', content: data.suggestedQuestions },
   ];
 
   if (data.potentialControversies && data.potentialControversies.length > 0) {
-    sections.push({ title: 'Potencialni kontroverze', content: data.potentialControversies });
+    sections.push({ title: 'Potenciální kontroverze', content: data.potentialControversies });
   }
 
   for (const section of sections) {
@@ -52,7 +59,7 @@ export async function generatePdf(data: ResearchData, hostName: string): Promise
       y = height - 50;
     }
 
-    page.drawText(removeDiacritics(section.title), {
+    page.drawText(section.title, {
       x: 50,
       y: y,
       size: 18,
@@ -62,30 +69,32 @@ export async function generatePdf(data: ResearchData, hostName: string): Promise
     y -= 25;
 
     for (const item of section.content) {
-      const cleanItem = removeDiacritics(item);
-      const text = section.content.length > 1 ? `- ${cleanItem}` : cleanItem;
+      const text = section.content.length > 1 ? `• ${item}` : item;
       const maxWidth = width - 100;
+      
+      // Jednoduché zalamování řádků
       const words = text.split(' ');
       let line = '';
 
       for (const word of words) {
         const testLine = line + word + ' ';
-        const textWidth = fontRegular.widthOfTextAtSize(testLine, 12);
+        const textWidth = fontRegular.widthOfTextAtSize(testLine, 11);
         
         if (textWidth > maxWidth) {
-          page.drawText(line, { x: 50, y: y, size: 12, font: fontRegular });
+          page.drawText(line.trim(), { x: 50, y: y, size: 11, font: fontRegular });
           y -= 15;
           line = word + ' ';
           
           if (y < 50) {
             page = pdfDoc.addPage([595.28, 841.89]);
             y = height - 50;
+            // Opětovné nastavení fontu na nové stránce není potřeba, ale musíme hlídat y
           }
         } else {
           line = testLine;
         }
       }
-      page.drawText(line, { x: 50, y: y, size: 12, font: fontRegular });
+      page.drawText(line.trim(), { x: 50, y: y, size: 11, font: fontRegular });
       y -= 20;
     }
     y -= 10;

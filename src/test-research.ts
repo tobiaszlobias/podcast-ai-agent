@@ -31,7 +31,7 @@ async function test() {
       data: {
         hostName,
         status: "COMPLETED",
-        summary: data as any,
+        summary: data as unknown as Record<string, unknown>,
       }
     });
     console.log("✅ Záznam uložen do DB s ID:", record.id);

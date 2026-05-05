@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     // 1. Okamžitá potvrzovací zpráva
     await sendWhatsAppMessage(
       from,
-      `Díky! Jdu prozkoumat internety a připravit podklady pro hosta: ${hostName}. Vydrž chvilku...`
+      `Jasně, už na tom makám! 🕵️‍♂️ Omrknu, co o ${hostName} píšou na netu, a za chvilku ti pošlu PDFko.`
     );
 
     // 2. Zpracování rešerše - u Vercelu musíme počkat na dokončení, 
@@ -43,22 +43,22 @@ export async function POST(request: NextRequest) {
         where: { id: researchRequest.id },
         data: {
           status: "COMPLETED",
-          summary: data as any,
+          summary: data as unknown as Record<string, unknown>,
         },
       });
       
       await sendWhatsAppMessage(
         from,
-        `Tady je tvoje rešerše pro hosta: ${hostName}`,
+        `Hotovo! Tady máš rešerši na hosta: ${hostName}. Ať se rozhovor povede! 🎙️`,
         publicUrl
       );
       
       console.log(`Research completed for: ${hostName}`);
-    } catch (error) {
-      console.error("Chyba při zpracování:", error);
+    } catch {
+      console.error("Chyba při zpracování:");
       await sendWhatsAppMessage(
         from,
-        `Omlouvám se, ale při přípravě rešerše pro ${hostName} došlo k chybě. Zkus to prosím později.`
+        `Hele, něco se pokazilo při zkoumání ${hostName}. 😕 Zkus to prosím za chvilku znova.`
       );
     }
 

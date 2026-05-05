@@ -6,7 +6,7 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholde
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 export async function uploadPdf(buffer: Buffer, fileName: string) {
-  const { data, error } = await supabase.storage
+  const { error } = await supabase.storage
     .from('research-pdfs')
     .upload(fileName, buffer, {
       contentType: 'application/pdf',

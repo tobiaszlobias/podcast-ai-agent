@@ -23,7 +23,7 @@ export default function Home() {
                 <div className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-sm font-bold text-emerald-400 mt-1">1</div>
                 <div className="ml-4">
                   <h3 className="text-lg font-semibold text-slate-200">Napiš na WhatsApp</h3>
-                  <p className="text-slate-400">Pošli jméno jakéhokoliv hosta (např. "Petr Mára" nebo "Elon Musk").</p>
+                  <p className="text-slate-400">Pošli jméno jakéhokoliv hosta (např. &quot;Petr Mára&quot; nebo &quot;Elon Musk&quot;).</p>
                 </div>
               </div>
 

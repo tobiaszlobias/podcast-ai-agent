@@ -1,37 +1,26 @@
-import { PDFDocument, rgb } from 'pdf-lib';
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { ResearchData } from "./gemini";
-import fs from 'fs';
-import path from 'path';
-import fontkit from '@pdf-lib/fontkit';
+
+// Funkce pro odstranění diakritiky (pro StandardFonts v pdf-lib, které ji neumí)
+function removeDiacritics(text: string): string {
+  if (!text) return "";
+  return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
 
 export async function generatePdf(data: ResearchData, hostName: string): Promise<Buffer> {
   const pdfDoc = await PDFDocument.create();
-  pdfDoc.registerFontkit(fontkit);
-
-  // Načtení fontů s podporou češtiny z projektu
-  const fontRegularPath = path.join(process.cwd(), 'public/fonts/Roboto-Regular.ttf');
-  const fontBoldPath = path.join(process.cwd(), 'public/fonts/Roboto-Bold.ttf');
   
-  console.log(`[PDF] Loading fonts from: ${fontRegularPath}`);
-  
-  if (!fs.existsSync(fontRegularPath)) {
-    console.error(`[PDF] Font not found at ${fontRegularPath}`);
-    throw new Error(`Font file not found: ${fontRegularPath}`);
-  }
-
-  const fontRegularBytes = new Uint8Array(fs.readFileSync(fontRegularPath));
-  const fontBoldBytes = new Uint8Array(fs.readFileSync(fontBoldPath));
-
-  const fontRegular = await pdfDoc.embedFont(fontRegularBytes);
-  const fontBold = await pdfDoc.embedFont(fontBoldBytes);
+  // Používáme standardní fonty, které fungují všude bez externích souborů
+  const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
   let page = pdfDoc.addPage([595.28, 841.89]); // A4
   const { width, height } = page.getSize();
   
   let y = height - 50;
 
-  // Header
-  page.drawText(`Podcast Briefing: ${hostName}`, {
+  // Header - odstraňujeme diakritiku pro standardní fonty
+  page.drawText(removeDiacritics(`Podcast Briefing: ${hostName}`), {
     x: 50,
     y: y,
     size: 24,
@@ -40,7 +29,7 @@ export async function generatePdf(data: ResearchData, hostName: string): Promise
   });
   y -= 30;
 
-  page.drawText(`Vygenerováno pro: Vojta Žižka`, {
+  page.drawText(removeDiacritics(`Vygenerováno pro: Vojta Žižka`), {
     x: 50,
     y: y,
     size: 10,
@@ -66,7 +55,7 @@ export async function generatePdf(data: ResearchData, hostName: string): Promise
       y = height - 50;
     }
 
-    page.drawText(section.title, {
+    page.drawText(removeDiacritics(section.title), {
       x: 50,
       y: y,
       size: 18,
@@ -77,10 +66,10 @@ export async function generatePdf(data: ResearchData, hostName: string): Promise
 
     for (const item of section.content) {
       const text = section.content.length > 1 ? `• ${item}` : item;
+      const cleanText = removeDiacritics(text);
       const maxWidth = width - 100;
       
-      // Jednoduché zalamování řádků
-      const words = text.split(' ');
+      const words = cleanText.split(' ');
       let line = '';
 
       for (const word of words) {
@@ -95,7 +84,6 @@ export async function generatePdf(data: ResearchData, hostName: string): Promise
           if (y < 50) {
             page = pdfDoc.addPage([595.28, 841.89]);
             y = height - 50;
-            // Opětovné nastavení fontu na nové stránce není potřeba, ale musíme hlídat y
           }
         } else {
           line = testLine;

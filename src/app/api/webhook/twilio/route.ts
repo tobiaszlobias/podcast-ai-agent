@@ -4,6 +4,7 @@ import { generatePdf } from "@/lib/pdf";
 import { sendWhatsAppMessage } from "@/lib/twilio";
 import { uploadPdf } from "@/lib/supabase";
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 
 export async function POST(request: NextRequest) {
   try {
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
         where: { id: researchRequest.id },
         data: {
           status: "COMPLETED",
-          summary: data as unknown as Record<string, unknown>,
+          summary: data as unknown as Prisma.InputJsonValue,
         },
       });
       

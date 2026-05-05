@@ -3,6 +3,7 @@ import { generateResearch } from "./lib/gemini";
 import { generatePdf } from "./lib/pdf";
 import { uploadPdf } from "./lib/supabase";
 import { prisma } from "./lib/prisma";
+import { Prisma } from "@prisma/client";
 
 async function test() {
   const hostName = "Petr Mára";
@@ -31,7 +32,7 @@ async function test() {
       data: {
         hostName,
         status: "COMPLETED",
-        summary: data as unknown as Record<string, unknown>,
+        summary: data as unknown as Prisma.InputJsonValue,
       }
     });
     console.log("✅ Záznam uložen do DB s ID:", record.id);

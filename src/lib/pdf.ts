@@ -1,15 +1,19 @@
 import { PDFDocument, rgb } from 'pdf-lib';
 import { ResearchData } from "./gemini";
-import fontkit from '@pdf-lib/fontkit';
+import * as fontkit from '@pdf-lib/fontkit';
 import { ROBOTO_REGULAR_B64, ROBOTO_BOLD_B64 } from './fonts-base64';
 
 export async function generatePdf(data: ResearchData, hostName: string): Promise<Buffer> {
   const pdfDoc = await PDFDocument.create();
-  pdfDoc.registerFontkit(fontkit);
+  
+  // Oprava registrace fontkitu pro ESM/CommonJS kompatibilitu
+  // @ts-ignore
+  const fk = fontkit.default || fontkit;
+  pdfDoc.registerFontkit(fk);
 
-  // Načtení fontů z Base64 (nejrobustnější řešení pro Vercel/Serverless)
-  const fontRegularBytes = Buffer.from(ROBOTO_REGULAR_B64, 'base64');
-  const fontBoldBytes = Buffer.from(ROBOTO_BOLD_B64, 'base64');
+  // Převod Base64 na Uint8Array (nejstabilnější pro pdf-lib)
+  const fontRegularBytes = Uint8Array.from(Buffer.from(ROBOTO_REGULAR_B64, 'base64'));
+  const fontBoldBytes = Uint8Array.from(Buffer.from(ROBOTO_BOLD_B64, 'base64'));
 
   const fontRegular = await pdfDoc.embedFont(fontRegularBytes);
   const fontBold = await pdfDoc.embedFont(fontBoldBytes);
@@ -68,7 +72,6 @@ export async function generatePdf(data: ResearchData, hostName: string): Promise
       const text = section.content.length > 1 ? `• ${item}` : item;
       const maxWidth = width - 100;
       
-      // Jednoduché zalamování řádků
       const words = text.split(' ');
       let line = '';
 

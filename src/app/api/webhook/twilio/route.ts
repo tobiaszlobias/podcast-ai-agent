@@ -23,48 +23,46 @@ export async function POST(request: NextRequest) {
       `Díky! Jdu prozkoumat internety a připravit podklady pro hosta: ${hostName}. Vydrž chvilku...`
     );
 
-    // 2. Asynchronní zpracování
-    const processResearch = async () => {
-      try {
-        console.log(`Starting research for: ${hostName}`);
-        
-        const researchRequest = await prisma.researchRequest.create({
-          data: { hostName, status: "PROCESSING" },
-        });
+    // 2. Zpracování rešerše - u Vercelu musíme počkat na dokončení, 
+    // jinak se funkce ukončí dříve, než se PDF nahraje a odešle.
+    try {
+      console.log(`Starting research for: ${hostName}`);
+      
+      const researchRequest = await prisma.researchRequest.create({
+        data: { hostName, status: "PROCESSING" },
+      });
 
-        const data = await generateResearch(hostName);
-        const pdfBuffer = await generatePdf(data, hostName);
+      const data = await generateResearch(hostName);
+      const pdfBuffer = await generatePdf(data, hostName);
 
-        // Nahrání do Supabase Storage
-        const fileName = `${researchRequest.id}-${hostName.replace(/\s+/g, '-').toLowerCase()}.pdf`;
-        const publicUrl = await uploadPdf(pdfBuffer, fileName);
+      // Nahrání do Supabase Storage
+      const fileName = `${researchRequest.id}-${hostName.replace(/\s+/g, '-').toLowerCase()}.pdf`;
+      const publicUrl = await uploadPdf(pdfBuffer, fileName);
 
-        await prisma.researchRequest.update({
-          where: { id: researchRequest.id },
-          data: {
-            status: "COMPLETED",
-            summary: data as any,
-          },
-        });
-        
-        await sendWhatsAppMessage(
-          from,
-          `Tady je tvoje rešerše pro hosta: ${hostName}`,
-          publicUrl
-        );
-        
-        console.log(`Research completed for: ${hostName}`);
-      } catch (error) {
-        console.error("Chyba při asynchronním zpracování:", error);
-        await sendWhatsAppMessage(
-          from,
-          `Omlouvám se, ale při přípravě rešerše pro ${hostName} došlo k chybě. Zkus to prosím později.`
-        );
-      }
-    };
+      await prisma.researchRequest.update({
+        where: { id: researchRequest.id },
+        data: {
+          status: "COMPLETED",
+          summary: data as any,
+        },
+      });
+      
+      await sendWhatsAppMessage(
+        from,
+        `Tady je tvoje rešerše pro hosta: ${hostName}`,
+        publicUrl
+      );
+      
+      console.log(`Research completed for: ${hostName}`);
+    } catch (error) {
+      console.error("Chyba při zpracování:", error);
+      await sendWhatsAppMessage(
+        from,
+        `Omlouvám se, ale při přípravě rešerše pro ${hostName} došlo k chybě. Zkus to prosím později.`
+      );
+    }
 
-    processResearch();
-
+    // Twilio očekává TwiML odpověď
     return new NextResponse("<Response></Response>", {
       headers: { "Content-Type": "text/xml" },
     });

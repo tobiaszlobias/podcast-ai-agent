@@ -12,7 +12,8 @@ export interface ResearchData {
 
 export async function generateResearch(hostName: string): Promise<ResearchData> {
   // Seznam modelů k vyzkoušení (od nejrychlejšího po nejrobustnější)
-  const modelNames = ["gemini-1.5-flash-latest", "gemini-1.5-pro-latest"];
+  // Používáme základní aliasy, které jsou nejvíce kompatibilní
+  const modelNames = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro", "gemini-flash"];
   
   const prompt = `Jsi špičkový profesionální rešeršista pro podcasty. Tvým úkolem je připravit detailní a gramaticky naprosto správné podklady pro rozhovor s hostem: ${hostName}.
   

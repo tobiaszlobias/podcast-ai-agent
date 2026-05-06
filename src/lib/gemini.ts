@@ -11,9 +11,9 @@ export interface ResearchData {
 }
 
 export async function generateResearch(hostName: string): Promise<ResearchData> {
-  // Používáme stabilnější verzi gemini-1.5-flash
+  // Používáme stabilní verzi gemini-1.5-flash-001
   const model = genAI.getGenerativeModel({ 
-    model: "gemini-1.5-flash",
+    model: "gemini-1.5-flash-001",
   });
 
   const prompt = `Jsi špičkový profesionální rešeršista pro podcasty. Tvým úkolem je připravit detailní a gramaticky naprosto správné podklady pro rozhovor s hostem: ${hostName}.

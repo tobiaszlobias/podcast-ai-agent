@@ -11,11 +11,9 @@ export interface ResearchData {
 }
 
 export async function generateResearch(hostName: string): Promise<ResearchData> {
-  // Používáme stabilní verzi gemini-1.5-flash-001
-  const model = genAI.getGenerativeModel({ 
-    model: "gemini-1.5-flash-001",
-  });
-
+  // Seznam modelů k vyzkoušení (od nejrychlejšího po nejrobustnější)
+  const modelNames = ["gemini-1.5-flash-latest", "gemini-1.5-pro-latest"];
+  
   const prompt = `Jsi špičkový profesionální rešeršista pro podcasty. Tvým úkolem je připravit detailní a gramaticky naprosto správné podklady pro rozhovor s hostem: ${hostName}.
   
   Použij vyhledávání na internetu a najdi nejaktuálnější informace o tomto člověku (jeho poslední projekty, vyjádření, rozhovory, sociální sítě).
@@ -36,23 +34,34 @@ export async function generateResearch(hostName: string): Promise<ResearchData> 
   - Vrať POUZE čistý JSON objekt bez jakéhokoliv dalšího textu nebo markdownu.`;
 
   let lastError;
-  for (let i = 0; i < 3; i++) {
-    try {
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
-      
-      const cleanJson = text.replace(/```json/g, "").replace(/```/g, "").trim();
-      return JSON.parse(cleanJson) as ResearchData;
-    } catch (error: any) {
-      lastError = error;
-      // Pokud je to chyba 503 (přetížení), počkáme a zkusíme znovu
-      if (error?.status === 503 || error?.message?.includes('503')) {
-        console.log(`[AI] Gemini is busy, retrying... (${i + 1}/3)`);
-        await new Promise(resolve => setTimeout(resolve, 2000 * (i + 1)));
-        continue;
+
+  for (const modelName of modelNames) {
+    console.log(`[AI] Trying model: ${modelName}`);
+    const model = genAI.getGenerativeModel({ model: modelName });
+
+    for (let i = 0; i < 2; i++) { // 2 pokusy pro každý model
+      try {
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const text = response.text();
+        
+        const cleanJson = text.replace(/```json/g, "").replace(/```/g, "").trim();
+        return JSON.parse(cleanJson) as ResearchData;
+      } catch (error: any) {
+        lastError = error;
+        // Pokud je model přetížený (503), zkusíme retry nebo jiný model
+        if (error?.status === 503 || error?.message?.includes('503')) {
+          console.log(`[AI] Model ${modelName} is busy, retrying... (${i + 1}/2)`);
+          await new Promise(resolve => setTimeout(resolve, 2000 * (i + 1)));
+          continue;
+        }
+        // Pokud model neexistuje (404), rovnou zkusíme další model v seznamu
+        if (error?.status === 404 || error?.message?.includes('404')) {
+          console.warn(`[AI] Model ${modelName} not found, switching to next model...`);
+          break; 
+        }
+        throw error;
       }
-      throw error;
     }
   }
 

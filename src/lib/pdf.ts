@@ -1,22 +1,21 @@
-import { PDFDocument, rgb } from 'pdf-lib';
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { ResearchData } from "./gemini";
-import * as fontkit from '@pdf-lib/fontkit';
-import { ROBOTO_REGULAR_B64, ROBOTO_BOLD_B64 } from './fonts-base64';
+
+// Funkce pro odstranění diakritiky (pro StandardFonts v pdf-lib, které ji neumí)
+function removeDiacritics(text: string): string {
+  if (!text) return "";
+  return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/ł/g, "l").replace(/Ł/g, "L")
+    .replace(/đ/g, "d").replace(/Đ/g, "D")
+    .replace(/ß/g, "ss");
+}
 
 export async function generatePdf(data: ResearchData, hostName: string): Promise<Buffer> {
   const pdfDoc = await PDFDocument.create();
   
-  // Oprava registrace fontkitu pro ESM/CommonJS kompatibilitu
-  // @ts-ignore
-  const fk = fontkit.default || fontkit;
-  pdfDoc.registerFontkit(fk);
-
-  // Převod Base64 na Uint8Array (nejstabilnější pro pdf-lib)
-  const fontRegularBytes = Uint8Array.from(Buffer.from(ROBOTO_REGULAR_B64, 'base64'));
-  const fontBoldBytes = Uint8Array.from(Buffer.from(ROBOTO_BOLD_B64, 'base64'));
-
-  const fontRegular = await pdfDoc.embedFont(fontRegularBytes);
-  const fontBold = await pdfDoc.embedFont(fontBoldBytes);
+  // Používáme standardní fonty, které fungují VŽDY a VŠUDE (nepotřebují fontkit ani externí soubory)
+  const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
   let page = pdfDoc.addPage([595.28, 841.89]); // A4
   const { width, height } = page.getSize();
@@ -24,7 +23,7 @@ export async function generatePdf(data: ResearchData, hostName: string): Promise
   let y = height - 50;
 
   // Header
-  page.drawText(`Podcast Briefing: ${hostName}`, {
+  page.drawText(removeDiacritics(`Podcast Briefing: ${hostName}`), {
     x: 50,
     y: y,
     size: 24,
@@ -33,7 +32,7 @@ export async function generatePdf(data: ResearchData, hostName: string): Promise
   });
   y -= 30;
 
-  page.drawText(`Vygenerováno pro: Vojta Žižka`, {
+  page.drawText(removeDiacritics(`Vygenerovano pro: Vojta Zizka`), {
     x: 50,
     y: y,
     size: 10,
@@ -44,13 +43,13 @@ export async function generatePdf(data: ResearchData, hostName: string): Promise
 
   const sections = [
     { title: 'Bio', content: [data.bio] },
-    { title: 'Aktuální témata', content: data.currentTopics },
-    { title: 'Zajímavosti', content: data.interestingFacts },
-    { title: 'Navržené otázky', content: data.suggestedQuestions },
+    { title: 'Aktualni temata', content: data.currentTopics },
+    { title: 'Zajimavosti', content: data.interestingFacts },
+    { title: 'Navrzene otazky', content: data.suggestedQuestions },
   ];
 
   if (data.potentialControversies && data.potentialControversies.length > 0) {
-    sections.push({ title: 'Potenciální kontroverze', content: data.potentialControversies });
+    sections.push({ title: 'Potencialni kontroverze', content: data.potentialControversies });
   }
 
   for (const section of sections) {
@@ -59,7 +58,7 @@ export async function generatePdf(data: ResearchData, hostName: string): Promise
       y = height - 50;
     }
 
-    page.drawText(section.title, {
+    page.drawText(removeDiacritics(section.title), {
       x: 50,
       y: y,
       size: 18,
@@ -69,10 +68,11 @@ export async function generatePdf(data: ResearchData, hostName: string): Promise
     y -= 25;
 
     for (const item of section.content) {
-      const text = section.content.length > 1 ? `• ${item}` : item;
+      const text = section.content.length > 1 ? `* ${item}` : item;
+      const cleanText = removeDiacritics(text);
       const maxWidth = width - 100;
       
-      const words = text.split(' ');
+      const words = cleanText.split(' ');
       let line = '';
 
       for (const word of words) {

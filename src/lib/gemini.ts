@@ -11,9 +11,9 @@ export interface ResearchData {
 }
 
 export async function generateResearch(hostName: string): Promise<ResearchData> {
-  // Používáme gemini-flash-latest, který je v seznamu dostupných modelů
+  // Používáme stabilnější verzi gemini-1.5-flash
   const model = genAI.getGenerativeModel({ 
-    model: "gemini-flash-latest",
+    model: "gemini-1.5-flash",
   });
 
   const prompt = `Jsi špičkový profesionální rešeršista pro podcasty. Tvým úkolem je připravit detailní a gramaticky naprosto správné podklady pro rozhovor s hostem: ${hostName}.
@@ -35,16 +35,26 @@ export async function generateResearch(hostName: string): Promise<ResearchData> 
   - Tón by měl být profesionální a inspirativní.
   - Vrať POUZE čistý JSON objekt bez jakéhokoliv dalšího textu nebo markdownu.`;
 
-  const result = await model.generateContent(prompt);
-  const response = await result.response;
-  const text = response.text();
-  
-  try {
-    // Odstranění případných ```json ... ``` obalů
-    const cleanJson = text.replace(/```json/g, "").replace(/```/g, "").trim();
-    return JSON.parse(cleanJson) as ResearchData;
-  } catch {
-    console.error("Chyba při parsování JSONu od Gemini:", text);
-    throw new Error("Nepodařilo se získat strukturovaná data od AI.");
+  let lastError;
+  for (let i = 0; i < 3; i++) {
+    try {
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+      
+      const cleanJson = text.replace(/```json/g, "").replace(/```/g, "").trim();
+      return JSON.parse(cleanJson) as ResearchData;
+    } catch (error: any) {
+      lastError = error;
+      // Pokud je to chyba 503 (přetížení), počkáme a zkusíme znovu
+      if (error?.status === 503 || error?.message?.includes('503')) {
+        console.log(`[AI] Gemini is busy, retrying... (${i + 1}/3)`);
+        await new Promise(resolve => setTimeout(resolve, 2000 * (i + 1)));
+        continue;
+      }
+      throw error;
+    }
   }
+
+  throw lastError;
 }
